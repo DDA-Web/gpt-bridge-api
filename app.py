@@ -10,18 +10,20 @@ def nouveau_brief():
     data = request.json
     keyword = data.get('keyword')
     if keyword:
-        # Pour le moment, on stocke juste le mot-clé
         briefs[keyword] = None  # Brief vide pour le moment
         return jsonify({"status": "success", "message": f"Mot-clé '{keyword}' reçu."}), 200
     return jsonify({"status": "error", "message": "Aucun mot-clé reçu."}), 400
 
 @app.route('/recupererBrief', methods=['GET'])
 def recuperer_brief():
-    # Pour l'instant, renvoie simplement le premier mot-clé en attente
     for keyword, brief in briefs.items():
-        if brief is None:
-            return jsonify({"keyword": keyword}), 200
-    return jsonify({"message": "Aucun mot-clé en attente."}), 200
+        if brief is not None:
+            return jsonify({
+                "keyword": keyword,
+                "brief": brief,
+                "status": "success"
+            }), 200
+    return jsonify({"message": "Aucun brief disponible pour le moment."}), 200
 
 @app.route('/enregistrerBrief', methods=['POST'])
 def enregistrer_brief():
