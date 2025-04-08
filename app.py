@@ -17,12 +17,8 @@ def nouveau_brief():
 @app.route('/recupererBrief', methods=['GET'])
 def recuperer_brief():
     for keyword, brief in briefs.items():
-        if brief is not None:
-            return jsonify({
-                "keyword": keyword,
-                "brief": brief,
-                "status": "success"
-            }), 200
+        if brief is None:  # ✅ récupérer le premier brief EN ATTENTE
+            return jsonify({"keyword": keyword}), 200
     return jsonify({"message": "Aucun brief disponible pour le moment."}), 200
 
 @app.route('/enregistrerBrief', methods=['POST'])
