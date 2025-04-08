@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Stockage temporaire (pour simplifier)
+# Stockage temporaire
 briefs = {}
 
 @app.route('/nouveauBrief', methods=['POST'])
@@ -10,15 +10,20 @@ def nouveau_brief():
     data = request.json
     keyword = data.get('keyword')
     if keyword:
-        briefs[keyword] = None  # Brief vide pour le moment
+        briefs[keyword] = {"brief": None, "used": False}
         return jsonify({"status": "success", "message": f"Mot-clé '{keyword}' reçu."}), 200
     return jsonify({"status": "error", "message": "Aucun mot-clé reçu."}), 400
 
 @app.route('/recupererBrief', methods=['GET'])
 def recuperer_brief():
-    for keyword, brief in briefs.items():
-        if brief is None:  # ✅ récupérer le premier brief EN ATTENTE
-            return jsonify({"keyword": keyword}), 200
+    for keyword, data in briefs.items():
+        if data["brief"] is not None and not data["used"]:
+            data["used"] = True  # Marquer comme utilisé
+            return jsonify({
+                "keyword": keyword,
+                "brief": data["brief"],
+                "status": "success"
+            }), 200
     return jsonify({"message": "Aucun brief disponible pour le moment."}), 200
 
 @app.route('/enregistrerBrief', methods=['POST'])
@@ -27,7 +32,11 @@ def enregistrer_brief():
     keyword = data.get('keyword')
     brief = data.get('brief')
     if keyword and brief:
-        briefs[keyword] = brief
+        if keyword in briefs:
+            briefs[keyword]["brief"] = brief
+            briefs[keyword]["used"] = False
+        else:
+            briefs[keyword] = {"brief": brief, "used": False}
         return jsonify({"status": "success", "message": "Brief enregistré."}), 200
     return jsonify({"status": "error", "message": "Mot-clé ou brief manquant."}), 400
 
