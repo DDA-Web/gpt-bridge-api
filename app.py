@@ -2,29 +2,27 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Stockage temporaire (en mémoire)
+# Stockage temporaire (pour simplifier)
 briefs = {}
-last_keyword = None  # 🔧 nouvelle variable globale
 
 @app.route('/nouveauBrief', methods=['POST'])
 def nouveau_brief():
-    global last_keyword
     data = request.json
     keyword = data.get('keyword')
     if keyword:
-        briefs[keyword] = None
-        last_keyword = keyword  # 🆕 on garde le dernier mot-clé reçu
+        briefs[keyword] = None  # Brief vide pour le moment
         return jsonify({"status": "success", "message": f"Mot-clé '{keyword}' reçu."}), 200
     return jsonify({"status": "error", "message": "Aucun mot-clé reçu."}), 400
 
 @app.route('/recupererBrief', methods=['GET'])
 def recuperer_brief():
-    if last_keyword and briefs.get(last_keyword):
-        return jsonify({
-            "keyword": last_keyword,
-            "brief": briefs[last_keyword],
-            "status": "success"
-        }), 200
+    for keyword, brief in briefs.items():
+        if brief is not None:
+            return jsonify({
+                "keyword": keyword,
+                "brief": brief,
+                "status": "success"
+            }), 200
     return jsonify({"message": "Aucun brief disponible pour le moment."}), 200
 
 @app.route('/enregistrerBrief', methods=['POST'])
