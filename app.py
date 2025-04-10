@@ -1,53 +1,50 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
-import os
 
 app = Flask(__name__)
-CORS(app)
 
-briefs = []
+# Mémoire en RAM
+briefs = {}
 
-@app.route("/nouveauBrief", methods=["POST"])
+@app.route('/nouveauBrief', methods=['POST'])
 def nouveau_brief():
     data = request.json
-    keyword = data.get("keyword")
-    if not keyword:
-        return jsonify({"error": "Le champ 'keyword' est requis."}), 400
+    keyword = data.get('keyword')
+    if keyword:
+        if keyword not in briefs:
+            briefs[keyword] = None
+            return jsonify({"status": "success", "message": f"Mot-clé '{keyword}' reçu."}), 200
+        else:
+            return jsonify({"status": "already_exists", "message": "Mot-clé déjà enregistré."}), 200
+    return jsonify({"status": "error", "message": "Aucun mot-clé reçu."}), 400
 
-    briefs.append({"keyword": keyword, "status": "pending", "brief": ""})
-    return jsonify({"message": f"Mot-clé '{keyword}' reçu.", "status": "success"}), 200
+@app.route('/recupererBrief', methods=['GET'])
+def recuperer_brief():
+    for keyword, brief in briefs.items():
+        if brief is None:
+            return jsonify({"keyword": keyword}), 200
+    return jsonify({"message": "Aucun mot-clé en attente."}), 200
 
-@app.route("/enregistrerBrief", methods=["POST"])
+@app.route('/enregistrerBrief', methods=['POST'])
 def enregistrer_brief():
     data = request.json
-    keyword = data.get("keyword")
-    brief = data.get("brief")
+    keyword = data.get('keyword')
+    brief = data.get('brief')
+    if keyword and brief:
+        if keyword in briefs:
+            briefs[keyword] = brief
+            return jsonify({"status": "success", "message": "Brief enregistré."}), 200
+        else:
+            return jsonify({"status": "error", "message": "Mot-clé introuvable."}), 404
+    return jsonify({"status": "error", "message": "Mot-clé ou brief manquant."}), 400
 
-    for b in reversed(briefs):
-        if b["keyword"] == keyword:
-            b["brief"] = brief
-            b["status"] = "done"
-            return jsonify({"message": "Brief enregistré.", "status": "success"}), 200
-
-    return jsonify({"error": "Mot-clé introuvable."}), 404
-
-@app.route("/recupererBrief", methods=["GET"])
-def recuperer_brief():
-    for b in reversed(briefs):
-        if b["status"] == "done":
-            return jsonify({
-                "keyword": b["keyword"],
-                "brief": b["brief"],
-                "status": b["status"]
-            }), 200
-
-    return jsonify({"message": "Aucun brief disponible pour le moment."}), 200
-
-@app.route("/reset", methods=["GET"])
+@app.route('/reset', methods=['GET'])
 def reset():
     briefs.clear()
-    return jsonify({"message": "Mémoire vidée.", "status": "reset"}), 200
+    return jsonify({"status": "reset", "message": "Mémoire vidée."}), 200
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+@app.route('/')
+def home():
+    return "API GPT Bridge active.", 200
+
+if __name__ == '__main__':
+    app.run(debug=True, host="0.0.0.0", port=5000)
