@@ -1,66 +1,73 @@
+import os
 from flask import Flask, request, jsonify
+from flask_cors import CORS
+import json
 
 app = Flask(__name__)
+CORS(app)
 
-briefs = []
+FICHIER_BRIEFS = "briefs.json"
+
+def lire_brefs():
+    if os.path.exists(FICHIER_BRIEFS):
+        with open(FICHIER_BRIEFS, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+def ecrire_brefs(data):
+    with open(FICHIER_BRIEFS, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 @app.route("/nouveauBrief", methods=["POST"])
 def nouveau_brief():
-    data = request.json
+    data = request.get_json()
     keyword = data.get("keyword")
     if not keyword:
-        return jsonify({"message": "Mot-clé manquant."}), 400
+        return jsonify({"error": "Champ 'keyword' requis"}), 400
 
-    # Marquer tous les briefs comme terminés (sécurité si bug)
-    for brief in briefs:
-        if brief["status"] == "pending":
-            brief["status"] = "skipped"
-
-    briefs.append({
-        "keyword": keyword,
-        "status": "pending",
-        "brief": ""
-    })
-
-    return jsonify({
-        "message": f"Mot-clé '{keyword}' reçu.",
-        "status": "success"
-    }), 200
+    briefs = lire_brefs()
+    briefs.append({"keyword": keyword, "status": "pending"})
+    ecrire_brefs(briefs)
+    return jsonify({"message": f"Mot-clé '{keyword}' reçu.", "status": "success"})
 
 @app.route("/recupererBrief", methods=["GET"])
 def recuperer_brief():
-    for brief in briefs:
-        if brief.get("status") == "pending":
+    briefs = lire_brefs()
+    for i in reversed(range(len(briefs))):
+        if briefs[i].get("status") == "done" and "brief" in briefs[i]:
             return jsonify({
-                "keyword": brief["keyword"]
-            }), 200
+                "keyword": briefs[i]["keyword"],
+                "brief": briefs[i]["brief"],
+                "status": "done"
+            })
 
-    return jsonify({"message": "Aucun brief disponible pour le moment."}), 200
+    return jsonify({"message": "Aucun brief disponible pour le moment."})
 
 @app.route("/enregistrerBrief", methods=["POST"])
 def enregistrer_brief():
-    data = request.json
+    data = request.get_json()
     keyword = data.get("keyword")
-    brief_content = data.get("brief")
+    brief = data.get("brief")
 
-    if not keyword or not brief_content:
-        return jsonify({"message": "Champs manquants."}), 400
+    if not keyword or not brief:
+        return jsonify({"error": "Champs 'keyword' et 'brief' requis"}), 400
 
-    for brief in briefs:
-        if brief["keyword"] == keyword and brief["status"] == "pending":
-            brief["brief"] = brief_content
-            brief["status"] = "done"
-            return jsonify({
-                "message": "Brief enregistré.",
-                "status": "success"
-            }), 200
+    briefs = lire_brefs()
+    for i in reversed(range(len(briefs))):
+        if briefs[i]["keyword"] == keyword:
+            briefs[i]["brief"] = brief
+            briefs[i]["status"] = "done"
+            ecrire_brefs(briefs)
+            return jsonify({"message": "Brief enregistré.", "status": "success"})
 
-    return jsonify({"message": "Brief non trouvé."}), 404
+    return jsonify({"error": "Mot-clé introuvable."}), 404
 
 @app.route("/reset", methods=["GET"])
 def reset():
-    memoire["briefs"] = []
+    ecrire_brefs([])
     return jsonify({"message": "Mémoire vidée.", "status": "reset"})
 
+# ✅ CORRECT POUR DEPLOIEMENT SUR RAILWAY
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
