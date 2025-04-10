@@ -59,5 +59,8 @@ def enregistrer_brief():
 
 @app.route("/reset", methods=["GET"])
 def reset():
-    briefs.clear()
-    return jsonify({"message": "Mémoire vidée.", "status": "reset"}), 200
+    memoire["briefs"] = []
+    return jsonify({"message": "Mémoire vidée.", "status": "reset"})
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000)
