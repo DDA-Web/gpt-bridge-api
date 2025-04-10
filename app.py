@@ -19,9 +19,18 @@ def nouveau_brief():
 
 @app.route('/recupererBrief', methods=['GET'])
 def recuperer_brief():
-    for keyword, brief in briefs.items():
-        if brief is None:
-            return jsonify({"keyword": keyword}), 200
+    # Trouver tous les briefs encore None
+    pending_briefs = [(kw, ts) for kw, ts in briefs.items() if ts is None]
+
+    if not pending_briefs:
+        return jsonify({"message": "Aucun mot-clé en attente."}), 200
+
+    # Récupérer le dernier ajouté (ordre d'insertion conservé en Python 3.7+)
+    last_keyword = list(briefs.keys())[::-1]
+    for kw in last_keyword:
+        if briefs[kw] is None:
+            return jsonify({"keyword": kw}), 200
+
     return jsonify({"message": "Aucun mot-clé en attente."}), 200
 
 @app.route('/enregistrerBrief', methods=['POST'])
